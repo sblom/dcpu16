@@ -90,7 +90,16 @@ namespace Dcpu16.VM
 	{
 		machine.ram[loca] = machine.ram[locb];
 	}
-    void add(ref ushort loca, ushort locb) { }
+    void add(ref ushort loca, ushort locb) {
+		int a = machine.ram[loca];
+		int b = machine.ram[locb];
+		a += b;
+		if (a > 0xffff)
+		{
+			machine.o = 1;
+		}
+		machine.ram[loca]=(ushort)a/0x10000;
+	}
     void sub(ref ushort loca, ushort locb) { }
     void mul(ref ushort loca, ushort locb) { }
     void div(ref ushort loca, ushort locb) { }
