@@ -7,7 +7,6 @@ namespace Dcpu16.VM
 {
   public class Machine
   {
-	public static ushort MAX_VAL = 0xffff;
     public enum Regs: byte { A, B, C, X, Y, Z, I, J };
     public ushort[] regs = new ushort[8];
     public ushort[] ram = new ushort[0x10000];
@@ -16,13 +15,12 @@ namespace Dcpu16.VM
 
   public class Processor
   {
-	
-		
     private Machine machine;
+    public static ushort WORD_SIZE = 16;
+    public static ushort MAX_VAL = (1 << WORD_SIZE) - 1;
+    public static ushort MIN_VAL = 0;
 
-    public Processor()
-      : this(new Machine())
-    {}
+    public Processor() : this(new Machine()) {}
 
     public Processor(Machine machine)
     {
@@ -31,7 +29,7 @@ namespace Dcpu16.VM
 
     public void DoCycle()
     {
-      ushort instruction = machine.ram[machine.sp++];
+      ushort instruction = machine.ram[machine.pc++];
       byte oooo = (byte)(instruction & 0xf);
       byte aaaaaa = (byte)((instruction >> 4) & 0x3f);
       byte bbbbbb = (byte)((instruction >> 10) & 0x3f);
@@ -73,52 +71,116 @@ namespace Dcpu16.VM
       }
     }
 
-    delegate void operation(ref ushort loca, ushort locb);
+    delegate void operation(ref ushort loca, ref ushort locb);
+
     void dispatch(byte a, byte b, operation op)
     {
-
+      ushort bval = 0;
+      route(b, ref bval, get);
+      route(a, ref bval, op);
     }
 
-    void route(byte aaaa, Action<ushort> op)
+    void get(ref ushort a, ref ushort b)
     {
-      switch (aaaa)
-      {
-        case 0x00:
-          break;
-      }
+      b = a;
     }
 
-    void extended(byte a, byte o) {}
+    void route(byte aaaaaa, ref ushort bval, operation op)
+    {
+
+      if ((aaaaaa & 0x20) != 0) {
+        ushort literal = (ushort)(aaaaaa & 0x1f);
+        op(ref literal, ref bval);
+      }
+      else
+      {
+        byte loctype = (byte)((aaaaaa >> 3) & 0x03);
+        byte reg = (byte)(aaaaaa & 0x07);
+
+        switch (loctype)
+        {
+          case 0x00:
+            op(ref machine.regs[reg], ref bval);
+            break;
+          case 0x01:
+            op(ref machine.ram[machine.regs[reg]], ref bval);
+            break;
+          case 0x02:
+            op(ref machine.ram[machine.regs[reg] + machine.ram[machine.pc++]], ref bval);
+            break;
+          case 0x03:
+            switch (reg)
+            {
+              case 0x00:
+                op(ref machine.ram[machine.sp++], ref bval);
+                break;
+              case 0x01:
+                op(ref machine.ram[machine.sp], ref bval);
+                break;
+              case 0x02:
+                op(ref machine.ram[--machine.sp], ref bval);
+                break;
+              case 0x03:
+                op(ref machine.sp, ref bval);
+                break;
+              case 0x04:
+                op(ref machine.pc, ref bval);
+                break;
+              case 0x05:
+                op(ref machine.o, ref bval);
+                break;
+              case 0x06:
+                op(ref machine.ram[machine.ram[machine.pc++]], ref bval);
+                break;
+              case 0x07:
+                op(ref machine.ram[machine.pc++], ref bval);
+                break;
+            }
+            break;
+        }
+      }
+
+      byte type = (byte)((aaaaaa >> 3) & 0x3);
+      byte loc = (byte)(aaaaaa & 0x7);
+      if (type == 0)
+      {
+        switch(loc){}
+      }
+    }   
+
+    void extended(byte a, byte o) { }
+
     void set(ref ushort loca, ushort locb)
-	{
-		machine.ram[loca] = machine.ram[locb];
-	}
+    {
+      machine.ram[loca] = machine.ram[locb];
+    }
+
     void add(ref ushort loca, ushort locb)
-	{
-		uint a = machine.ram[loca];
-		uint b = machine.ram[locb];
-		a += b;
-		if (a > Machine.MAX_VAL) {
-			a = Machine.MAX_VAL;
-			machine.o = 1;
-		}
-		else {
-			machine.o = 0;
-		}
-		machine.ram[loca]= a & Machine.MAX_VAL;
-	}
-    void sub(ref ushort loca, ushort locb) { }
-    void mul(ref ushort loca, ushort locb) { }
-    void div(ref ushort loca, ushort locb) { }
-    void mod(ref ushort loca, ushort locb) { }
-    void shl(ref ushort loca, ushort locb) { }
-    void shr(ref ushort loca, ushort locb) { }
-    void and(ref ushort loca, ushort locb) { }
-    void or(ref ushort loca, ushort locb) { }
-    void xor(ref ushort loca, ushort locb) { }
-    void ife(ref ushort loca, ushort locb) { }
-    void ifn(ref ushort loca, ushort locb) { }
-    void ifg(ref ushort loca, ushort locb) { }
-    void ifb(ref ushort loca, ushort locb) { }
+    {
+      uint a = loca;
+      a += locb;
+      loca = a & Machine.MAX_VAL;
+      machine.o = a >> 16;
+    }
+
+    void sub(ref ushort loca, ushort locb)
+    {
+      int a = (uint)loca;
+      loca = (a-locb) & Machine.MAX_VAL;
+      machine.o = a >> 16;
+    }
+
+    void mul(ref ushort loca, ref ushort locb) { }
+    void div(ref ushort loca, ref ushort locb) { }
+    void mod(ref ushort loca, ref ushort locb) { }
+    void shl(ref ushort loca, ref ushort locb) { }
+    void shr(ref ushort loca, ref ushort locb) { }
+    void and(ref ushort loca, ref ushort locb) { }
+    void or(ref ushort loca, ref ushort locb) { }
+    void xor(ref ushort loca, ref ushort locb) { }
+    void ife(ref ushort loca, ref ushort locb) { }
+    void ifn(ref ushort loca, ref ushort locb) { }
+    void ifg(ref ushort loca, ref ushort locb) { }
+    void ifb(ref ushort loca, ref ushort locb) { }
   }
 }
