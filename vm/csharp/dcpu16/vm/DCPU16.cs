@@ -28,7 +28,7 @@ namespace Dcpu16.VM
 
     public void DoCycle()
     {
-      ushort instruction = machine.ram[machine.sp++];
+      ushort instruction = machine.ram[machine.pc++];
       byte oooo = (byte)(instruction & 0xf);
       byte aaaaaa = (byte)((instruction >> 4) & 0x3f);
       byte bbbbbb = (byte)((instruction >> 10) & 0x3f);
@@ -70,36 +70,97 @@ namespace Dcpu16.VM
       }
     }
 
-    delegate void operation(ref ushort loca, ushort locb);
+    delegate void operation(ref ushort loca, ref ushort locb);
     void dispatch(byte a, byte b, operation op)
     {
-
+      ushort bval = 0;
+      route(b, ref bval, get);
+      route(a, ref bval, op);
     }
 
-    void route(byte aaaa, Action<ushort> op)
+    void get(ref ushort a, ref ushort b)
     {
-      switch (aaaa)
-      {
-        case 0x00:
-          break;
-      }
+      b = a;
     }
+
+    void route(byte aaaaaa, ref ushort bval, operation op)
+    {
+
+      if ((aaaaaa & 0x20) != 0) {
+        ushort literal = (ushort)(aaaaaa & 0x1f);
+        op(ref literal, ref bval);
+      }
+      else
+      {
+        byte loctype = (byte)((aaaaaa >> 3) & 0x03);
+        byte reg = (byte)(aaaaaa & 0x07);
+
+        switch (loctype)
+        {
+          case 0x00:
+            op(ref machine.regs[reg], ref bval);
+            break;
+          case 0x01:
+            op(ref machine.ram[machine.regs[reg]], ref bval);
+            break;
+          case 0x02:
+            op(ref machine.ram[machine.regs[reg] + machine.ram[machine.pc++]], ref bval);
+            break;
+          case 0x03:
+            switch (reg)
+            {
+              case 0x00:
+                op(ref machine.ram[machine.sp++], ref bval);
+                break;
+              case 0x01:
+                op(ref machine.ram[machine.sp], ref bval);
+                break;
+              case 0x02:
+                op(ref machine.ram[--machine.sp], ref bval);
+                break;
+              case 0x03:
+                op(ref machine.sp, ref bval);
+                break;
+              case 0x04:
+                op(ref machine.pc, ref bval);
+                break;
+              case 0x05:
+                op(ref machine.o, ref bval);
+                break;
+              case 0x06:
+                op(ref machine.ram[machine.ram[machine.pc++]], ref bval);
+                break;
+              case 0x07:
+                op(ref machine.ram[machine.pc++], ref bval);
+                break;
+            }
+            break;
+        }
+      }
+
+      byte type = (byte)((aaaaaa >> 3) & 0x3);
+      byte loc = (byte)(aaaaaa & 0x7);
+      if (type == 0)
+      {
+        switch(loc){}
+      }
+    }   
 
     void extended(byte a, byte o) { }
-    void set(ref ushort loca, ushort locb) {}
-    void add(ref ushort loca, ushort locb) { }
-    void sub(ref ushort loca, ushort locb) { }
-    void mul(ref ushort loca, ushort locb) { }
-    void div(ref ushort loca, ushort locb) { }
-    void mod(ref ushort loca, ushort locb) { }
-    void shl(ref ushort loca, ushort locb) { }
-    void shr(ref ushort loca, ushort locb) { }
-    void and(ref ushort loca, ushort locb) { }
-    void or(ref ushort loca, ushort locb) { }
-    void xor(ref ushort loca, ushort locb) { }
-    void ife(ref ushort loca, ushort locb) { }
-    void ifn(ref ushort loca, ushort locb) { }
-    void ifg(ref ushort loca, ushort locb) { }
-    void ifb(ref ushort loca, ushort locb) { }
+    void set(ref ushort loca, ref ushort locb) {}
+    void add(ref ushort loca, ref ushort locb) { }
+    void sub(ref ushort loca, ref ushort locb) { }
+    void mul(ref ushort loca, ref ushort locb) { }
+    void div(ref ushort loca, ref ushort locb) { }
+    void mod(ref ushort loca, ref ushort locb) { }
+    void shl(ref ushort loca, ref ushort locb) { }
+    void shr(ref ushort loca, ref ushort locb) { }
+    void and(ref ushort loca, ref ushort locb) { }
+    void or(ref ushort loca, ref ushort locb) { }
+    void xor(ref ushort loca, ref ushort locb) { }
+    void ife(ref ushort loca, ref ushort locb) { }
+    void ifn(ref ushort loca, ref ushort locb) { }
+    void ifg(ref ushort loca, ref ushort locb) { }
+    void ifb(ref ushort loca, ref ushort locb) { }
   }
 }
