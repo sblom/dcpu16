@@ -7,6 +7,7 @@ namespace Dcpu16.VM
 {
   public class Machine
   {
+	public static ushort MAX_VAL = 0xffff;
     public enum Regs: byte { A, B, C, X, Y, Z, I, J };
     public ushort[] regs = new ushort[8];
     public ushort[] ram = new ushort[0x10000];
@@ -15,6 +16,8 @@ namespace Dcpu16.VM
 
   public class Processor
   {
+	
+		
     private Machine machine;
 
     public Processor()
@@ -90,15 +93,19 @@ namespace Dcpu16.VM
 	{
 		machine.ram[loca] = machine.ram[locb];
 	}
-    void add(ref ushort loca, ushort locb) {
-		int a = machine.ram[loca];
-		int b = machine.ram[locb];
+    void add(ref ushort loca, ushort locb)
+	{
+		uint a = machine.ram[loca];
+		uint b = machine.ram[locb];
 		a += b;
-		if (a > 0xffff)
-		{
+		if (a > Machine.MAX_VAL) {
+			a = Machine.MAX_VAL;
 			machine.o = 1;
 		}
-		machine.ram[loca]=(ushort)a/0x10000;
+		else {
+			machine.o = 0;
+		}
+		machine.ram[loca]= a & Machine.MAX_VAL;
 	}
     void sub(ref ushort loca, ushort locb) { }
     void mul(ref ushort loca, ushort locb) { }
