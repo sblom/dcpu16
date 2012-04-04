@@ -85,8 +85,11 @@ namespace Dcpu16.VM
       }
     }
 
-    void extended(byte a, byte o) { }
-    void set(ref ushort loca, ushort locb) {}
+    void extended(byte a, byte o) {}
+    void set(ref ushort loca, ushort locb)
+	{
+		machine.ram[loca] = machine.ram[locb];
+	}
     void add(ref ushort loca, ushort locb) { }
     void sub(ref ushort loca, ushort locb) { }
     void mul(ref ushort loca, ushort locb) { }
