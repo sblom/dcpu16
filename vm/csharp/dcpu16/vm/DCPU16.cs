@@ -71,25 +71,22 @@ namespace Dcpu16.VM
       }
     }
 
-    delegate void operation(ref ushort loca, ref ushort locb);
+    delegate ushort operation(ref ushort a, Func<ushort> b = null);
     void dispatch(byte a, byte b, operation op)
     {
-      ushort bval = 0;
-      route(b, ref bval, get);
-      route(a, ref bval, op);
+      route(a, op, () => route(b, get));
     }
 
-    void get(ref ushort a, ref ushort b)
+    ushort get(ref ushort a, Func<ushort> b)
     {
-      b = a;
+      return a;
     }
 
-    void route(byte aaaaaa, ref ushort bval, operation op)
+    ushort route(byte aaaaaa, operation op, Func<ushort> bget = null)
     {
-
       if ((aaaaaa & 0x20) != 0) {
         ushort literal = (ushort)(aaaaaa & 0x1f);
-        op(ref literal, ref bval);
+        return op(ref literal, bget);
       }
       else
       {
@@ -99,169 +96,185 @@ namespace Dcpu16.VM
         switch (loctype)
         {
           case 0x00:
-            op(ref machine.regs[reg], ref bval);
-            break;
+            return op(ref machine.regs[reg], bget);
           case 0x01:
-            op(ref machine.ram[machine.regs[reg]], ref bval);
-            break;
+            return op(ref machine.ram[machine.regs[reg]], bget);
           case 0x02:
-            op(ref machine.ram[machine.regs[reg] + machine.ram[machine.pc++]], ref bval);
-            break;
+            return op(ref machine.ram[machine.regs[reg] + machine.ram[machine.pc++]], bget);
           case 0x03:
             switch (reg)
             {
               case 0x00:
-                op(ref machine.ram[machine.sp++], ref bval);
-                break;
+                return op(ref machine.ram[machine.sp++], bget);
               case 0x01:
-                op(ref machine.ram[machine.sp], ref bval);
-                break;
+                return op(ref machine.ram[machine.sp], bget);
               case 0x02:
-                op(ref machine.ram[--machine.sp], ref bval);
-                break;
+                return op(ref machine.ram[--machine.sp], bget);
               case 0x03:
-                op(ref machine.sp, ref bval);
-                break;
+                return op(ref machine.sp, bget);
               case 0x04:
-                op(ref machine.pc, ref bval);
-                break;
+                return op(ref machine.pc, bget);
               case 0x05:
-                op(ref machine.o, ref bval);
-                break;
+                return op(ref machine.o, bget);
               case 0x06:
-                op(ref machine.ram[machine.ram[machine.pc++]], ref bval);
-                break;
+                return op(ref machine.ram[machine.ram[machine.pc++]], bget);
               case 0x07:
-                op(ref machine.ram[machine.pc++], ref bval);
-                break;
+                return op(ref machine.ram[machine.pc++], bget);
+              default:
+                throw new InvalidOperationException();
             }
-            break;
+          default:
+            throw new InvalidOperationException();
         }
       }
-
-//      byte type = (byte)((aaaaaa >> 3) & 0x3);
-//      byte loc = (byte)(aaaaaa & 0x7);
-//      if (type == 0)
-//      {
-//        switch(loc){}
-//      }
     }
 
     void extended(byte a, byte o) { }
 
-    void set(ref ushort loca, ref ushort locb)
+    ushort set(ref ushort loca, Func<ushort> bget)
     {
-      loca = locb;
+      ushort b = bget();
+      loca = b;
+      return 0;
     }
 
-    void add(ref ushort loca, ref ushort locb)
+    ushort add(ref ushort loca, Func<ushort> bget)
     {
-      uint a = (uint)(loca + locb);
+      ushort b = bget(); 
+      uint a = (uint)(loca + b);
       loca = (ushort)(a & MAX_VAL);
       machine.o = (ushort)(a >> 16);
+      return 0;
     }
 
-    void sub(ref ushort loca, ref ushort locb)
+    ushort sub(ref ushort loca, Func<ushort> bget)
     {
-      int a = loca - locb;
+      ushort b = bget();
+      int a = loca - b;
       loca = (ushort)(a & MAX_VAL);
       machine.o = (ushort)(a >> 16);
+      return 0;
     }
 
-    void mul(ref ushort loca, ref ushort locb)
+    ushort mul(ref ushort loca, Func<ushort> bget)
     {
-      uint a = (uint)(loca * locb);
+      ushort b = bget();
+      uint a = (uint)(loca * b);
       loca = (ushort)(a & MAX_VAL);
       machine.o = (ushort)(a >> 16);
+      return 0;
     }
 
-    void div(ref ushort loca, ref ushort locb)
+    ushort div(ref ushort loca, Func<ushort> bget)
     {
-      if (locb == 0) {
+      ushort b = bget();
+      if (b == 0)
+      {
         loca = 0;
         machine.o = 0;
-        return;
       }
-      uint a = (uint)(loca << 16);
-      loca = (ushort)((a/locb) >> 16);
-      machine.o = (ushort)((a/locb) & MAX_VAL);
+      else
+      {
+        uint a = (uint)(loca << 16);
+        loca = (ushort)((a / b) >> 16);
+        machine.o = (ushort)((a / b) & MAX_VAL);
+      }
+      return 0;
     }
 
-
-    void mod(ref ushort loca, ref ushort locb) { }
-    void shl(ref ushort loca, ref ushort locb) { }
-    void shr(ref ushort loca, ref ushort locb) { }
-    void and(ref ushort loca, ref ushort locb) { }
-    void or(ref ushort loca, ref ushort locb) { }
-    void xor(ref ushort loca, ref ushort locb) { }
-    void ife(ref ushort loca, ref ushort locb) { }
-    void ifn(ref ushort loca, ref ushort locb) { }
-    void ifg(ref ushort loca, ref ushort locb) { }
-    void ifb(ref ushort loca, ref ushort locb) { }
+    ushort mod(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort shl(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort shr(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort and(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort or(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort xor(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort ife(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort ifn(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort ifg(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort ifb(ref ushort loca, Func<ushort> bget) { return 0; }
 
     public static void Main(String[] args) {
+      ushort[] sample = {0x7c01, 0x0030, 0x7de1, 0x1000, 0x0020, 0x7803, 0x1000, 0xc00d,
+        0x7dc1, 0x001a, 0xa861, 0x7c01, 0x2000, 0x2161, 0x2000, 0x8463,
+        0x806d, 0x7dc1, 0x000d, 0x9031, 0x7c10, 0x0018, 0x7dc1, 0x001a,
+        0x9037, 0x61c1, 0x7dc1, 0x001a, 0x0000, 0x0000, 0x0000, 0x0000
+        };
+
+      Machine m1 = new Machine();
+      for (int i = 0; i < sample.Length; ++i)
+      {
+        m1.ram[i] = sample[i];
+      }
+
+      Processor p1 = new Processor(m1);
+
+      while (true)
+      {
+        p1.DoCycle();
+      }
+
       ushort a = 0xffff;
       ushort b = 1;
 
       ushort copyA = a;
       Processor p = new Processor();
-      p.add (ref a, ref b);
+      p.add (ref a, ()=>b);
       Console.WriteLine(copyA + " + " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
 
       a = 5;
       b = 10;
       copyA = a;
-      p.add (ref a, ref b);
+      p.add (ref a, ()=>b);
       Console.WriteLine(copyA + " + " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
 
       a = 10;
       b = 5;
       copyA = a;
-      p.sub (ref a, ref b);
+      p.sub (ref a, ()=>b);
       Console.WriteLine(copyA + " - " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
 
       a = 5;
       b = 10;
       copyA = a;
-      p.sub (ref a, ref b);
+      p.sub (ref a, ()=>b);
       Console.WriteLine(copyA + " - " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
 
       a = 0xffff;
       b = 0x5;
       copyA = a;
-      p.mul (ref a, ref b);
+      p.mul (ref a, ()=>b);
       Console.WriteLine(copyA + " * " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
 
       a = 0xffff;
       b = 0xffff;
       copyA = a;
-      p.mul (ref a, ref b);
+      p.mul (ref a, ()=>b);
       Console.WriteLine(copyA + " * " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
 
       a = 0xf000;
       b = 2;
       copyA = a;
-      p.div (ref a, ref b);
+      p.div (ref a, ()=>b);
       Console.WriteLine(copyA + " / " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
 
       a = 0xf001;
       b = 2;
       copyA = a;
-      p.div (ref a, ref b);
+      p.div (ref a, ()=>b);
       Console.WriteLine(copyA + " / " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
 
       a = 0xf001;
       b = 14;
       copyA = a;
-      p.div (ref a, ref b);
+      p.div (ref a, ()=>b);
       Console.WriteLine(copyA + " / " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
     }
