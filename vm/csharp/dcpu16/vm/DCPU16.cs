@@ -11,6 +11,7 @@ namespace Dcpu16.VM
     public ushort[] regs = new ushort[8];
     public ushort[] ram = new ushort[0x10000];
     public ushort pc, sp, o;
+    public bool skip;
   }
 
   public class Processor
@@ -199,10 +200,30 @@ namespace Dcpu16.VM
     ushort and(ref ushort loca, Func<ushort> bget) { return 0; }
     ushort or(ref ushort loca, Func<ushort> bget) { return 0; }
     ushort xor(ref ushort loca, Func<ushort> bget) { return 0; }
-    ushort ife(ref ushort loca, Func<ushort> bget) { return 0; }
-    ushort ifn(ref ushort loca, Func<ushort> bget) { return 0; }
-    ushort ifg(ref ushort loca, Func<ushort> bget) { return 0; }
-    ushort ifb(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort ife(ref ushort a, Func<ushort> bget)
+    {
+      ushort b = bget();
+      machine.skip = !(a == b);
+      return 0;
+    }
+    ushort ifn(ref ushort a, Func<ushort> bget)
+    {
+      ushort b = bget();
+      machine.skip = !(a != b);
+      return 0;
+    }
+    ushort ifg(ref ushort a, Func<ushort> bget)
+    {
+      ushort b = bget();
+      machine.skip = !(a > b);
+      return 0;
+    }
+    ushort ifb(ref ushort a, Func<ushort> bget)
+    {
+      ushort b = bget();
+      machine.skip = !((a & b) == 0);
+      return 0;
+    }
     #endregion
 
     public static void Main(String[] args) {
