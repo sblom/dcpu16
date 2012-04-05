@@ -17,7 +17,7 @@ namespace Dcpu16.VM
   {
     private Machine machine;
     public static ushort WORD_SIZE = 16;
-    public static ushort MAX_VAL = (1 << WORD_SIZE) - 1;
+    public static ushort MAX_VAL = (ushort)((1 << WORD_SIZE) - 1);
     public static ushort MIN_VAL = 0;
 
     public Processor() : this(new Machine()) {}
@@ -72,7 +72,6 @@ namespace Dcpu16.VM
     }
 
     delegate void operation(ref ushort loca, ref ushort locb);
-
     void dispatch(byte a, byte b, operation op)
     {
       ushort bval = 0;
@@ -144,33 +143,36 @@ namespace Dcpu16.VM
       byte loc = (byte)(aaaaaa & 0x7);
       if (type == 0)
       {
-        switch(loc){}
+        //switch(loc){}
       }
     }   
 
     void extended(byte a, byte o) { }
 
-    void set(ref ushort loca, ushort locb)
+    void set(ref ushort loca, ref ushort locb)
     {
       machine.ram[loca] = machine.ram[locb];
     }
 
-    void add(ref ushort loca, ushort locb)
+    void add(ref ushort loca, ref ushort locb)
     {
-      uint a = loca;
-      a += locb;
-      loca = a & Machine.MAX_VAL;
-      machine.o = a >> 16;
+      uint a = (uint)(loca + locb);
+      loca = (ushort)(a & MAX_VAL);
+      machine.o = (ushort)(a >> 16);
     }
 
-    void sub(ref ushort loca, ushort locb)
+    void sub(ref ushort loca, ref ushort locb)
     {
-      int a = (uint)loca;
-      loca = (a-locb) & Machine.MAX_VAL;
-      machine.o = a >> 16;
+      int a = loca - locb;
+      loca = (ushort)(a & MAX_VAL);
+      machine.o = (ushort)(a >> 16);
     }
 
-    void mul(ref ushort loca, ref ushort locb) { }
+    void mul(ref ushort loca, ref ushort locb) {
+      uint a = (uint)(loca * locb);
+      loca = (ushort)(a & MAX_VAL);
+      machine.o = (ushort)(a >> 16);
+    }
     void div(ref ushort loca, ref ushort locb) { }
     void mod(ref ushort loca, ref ushort locb) { }
     void shl(ref ushort loca, ref ushort locb) { }
@@ -182,5 +184,51 @@ namespace Dcpu16.VM
     void ifn(ref ushort loca, ref ushort locb) { }
     void ifg(ref ushort loca, ref ushort locb) { }
     void ifb(ref ushort loca, ref ushort locb) { }
+
+    public static void Main(String[] args) {
+      ushort a = 0xffff;
+      ushort b = 1;
+
+      ushort copyA = a;
+      Processor p = new Processor();
+      p.add (ref a, ref b);
+      Console.WriteLine(copyA + " + " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 5;
+      b = 10;
+      copyA = a;
+      p.add (ref a, ref b);
+      Console.WriteLine(copyA + " + " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 10;
+      b = 5;
+      copyA = a;
+      p.sub (ref a, ref b);
+      Console.WriteLine(copyA + " - " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 5;
+      b = 10;
+      copyA = a;
+      p.sub (ref a, ref b);
+      Console.WriteLine(copyA + " - " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xffff;
+      b = 0x5;
+      copyA = a;
+      p.mul (ref a, ref b);
+      Console.WriteLine(copyA + " * " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xffff;
+      b = 0xffff;
+      copyA = a;
+      p.mul (ref a, ref b);
+      Console.WriteLine(copyA + " * " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+    }
   }
 }
