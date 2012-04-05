@@ -80,6 +80,9 @@ namespace Dcpu16.VM
 
     ushort route(byte aaaaaa, operation op, Func<ushort> bget = null)
     {
+      // IMPORTANT: op will be set to noop only for the primary op
+      // in an instruction, the flag will have already been cleared
+      // in time for the bget() phase.
       if (machine.skip)
       {
         op = noop;
@@ -131,7 +134,16 @@ namespace Dcpu16.VM
       }
     }
 
-    void extended(byte a, byte o) { }
+    void extended(byte oooooo, byte aaaaaa)
+    {
+      switch (oooooo)
+      {
+        case 0x01: route(aaaaaa, jsr);
+          break;
+        default:
+          throw new InvalidOperationException();
+      }
+    }
 
     #region Special ops that aren't actually in the CPU instruction set.
     ushort get(ref ushort a, Func<ushort> bget)
@@ -274,6 +286,15 @@ namespace Dcpu16.VM
     }
     #endregion
 
+    #region Extended instructions.
+    ushort jsr(ref ushort a, Func<ushort> bget)
+    {
+      machine.ram[--machine.sp] = machine.pc;
+      machine.pc = a;
+      return 0;
+    }
+    #endregion
+
     public static void Main(String[] args) {
       ushort[] sample = {0x7c01, 0x0030, 0x7de1, 0x1000, 0x0020, 0x7803, 0x1000, 0xc00d,
         0x7dc1, 0x001a, 0xa861, 0x7c01, 0x2000, 0x2161, 0x2000, 0x8463,
@@ -289,7 +310,7 @@ namespace Dcpu16.VM
 
       Processor p1 = new Processor(m1);
 
-      while (true)
+      while (m1.pc != 0x1a)
       {
         p1.DoCycle();
       }
