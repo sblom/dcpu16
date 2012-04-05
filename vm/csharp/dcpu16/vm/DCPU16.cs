@@ -199,13 +199,28 @@ namespace Dcpu16.VM
 
     void shl(ref ushort loca, ref ushort locb)
     {
-      loca = loca << locb;
-      machine.o = loca >> 16;
+      uint a = (uint) (loca << locb);
+      loca = (ushort)(a & MAX_VAL);
+      machine.o = (ushort) (a >> 16);
     }
-    void shr(ref ushort loca, ref ushort locb) { }
-    void and(ref ushort loca, ref ushort locb) { }
-    void or(ref ushort loca, ref ushort locb) { }
-    void xor(ref ushort loca, ref ushort locb) { }
+    void shr(ref ushort loca, ref ushort locb)
+    {
+      uint a = (uint)((loca << 16) >> locb);
+      loca = (ushort)(a >> 16);
+      machine.o = (ushort)(a & MAX_VAL);
+    }
+    void and(ref ushort loca, ref ushort locb)
+    {
+      loca = (ushort)(loca&locb);
+    }
+    void or(ref ushort loca, ref ushort locb)
+    {
+      loca = (ushort)(loca|locb);
+    }
+    void xor(ref ushort loca, ref ushort locb)
+    {
+      loca = (ushort)(loca ^ locb);
+    }
     void ife(ref ushort loca, ref ushort locb) { }
     void ifn(ref ushort loca, ref ushort locb) { }
     void ifg(ref ushort loca, ref ushort locb) { }
@@ -290,6 +305,43 @@ namespace Dcpu16.VM
       p.mod (ref a, ref b);
       Console.WriteLine(copyA + " % " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
+
+
+      a = 0xf001;
+      b = 2;
+      copyA = a;
+      p.shl (ref a, ref b);
+      Console.WriteLine(copyA + " << " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf007;
+      b = 2;
+      copyA = a;
+      p.shr (ref a, ref b);
+      Console.WriteLine(copyA + " >> " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf007;
+      b = 0x0f08;
+      copyA = a;
+      p.and (ref a, ref b);
+      Console.WriteLine(copyA + " & " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf007;
+      b = 0x0f09;
+      copyA = a;
+      p.or (ref a, ref b);
+      Console.WriteLine(copyA + " | " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf007;
+      b = 0x0f09;
+      copyA = a;
+      p.xor (ref a, ref b);
+      Console.WriteLine(copyA + " xor " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
     }
   }
 }
