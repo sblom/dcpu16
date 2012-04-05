@@ -151,7 +151,7 @@ namespace Dcpu16.VM
 
     void set(ref ushort loca, ref ushort locb)
     {
-      machine.ram[loca] = machine.ram[locb];
+      loca = locb;
     }
 
     void add(ref ushort loca, ref ushort locb)
@@ -186,6 +186,8 @@ namespace Dcpu16.VM
       loca = (ushort)((a/locb) >> 16);
       machine.o = (ushort)((a/locb) & MAX_VAL);
     }
+
+
     void mod(ref ushort loca, ref ushort locb) { }
     void shl(ref ushort loca, ref ushort locb) { }
     void shr(ref ushort loca, ref ushort locb) { }
