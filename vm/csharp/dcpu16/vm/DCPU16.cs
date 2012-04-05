@@ -18,9 +18,6 @@ namespace Dcpu16.VM
   public class Processor
   {
     private Machine machine;
-    public static ushort WORD_SIZE = 16;
-    public static ushort MAX_VAL = (ushort)((1 << WORD_SIZE) - 1);
-    public static ushort MIN_VAL = 0;
 
     public Processor() : this(new Machine()) {}
 
@@ -178,7 +175,7 @@ namespace Dcpu16.VM
     ushort add(ref ushort a, Lazy<ushort> b)
     {
       uint c = (uint)(a + b.Value);
-      a = (ushort)(c & MAX_VAL);
+      a = (ushort)(c & ushort.MaxValue);
       machine.o = (ushort)(c >> 16);
       return 0;
     }
@@ -186,7 +183,7 @@ namespace Dcpu16.VM
     ushort sub(ref ushort a, Lazy<ushort> b)
     {
       int c = a - b.Value;
-      a = (ushort)(c & MAX_VAL);
+      a = (ushort)(c & ushort.MaxValue);
       machine.o = (ushort)(c >> 16);
       return 0;
     }
@@ -194,7 +191,7 @@ namespace Dcpu16.VM
     ushort mul(ref ushort a, Lazy<ushort> b)
     {
       uint c = (uint)(a * b.Value);
-      a = (ushort)(c & MAX_VAL);
+      a = (ushort)(c & ushort.MaxValue);
       machine.o = (ushort)(c >> 16);
       return 0;
     }
@@ -210,7 +207,7 @@ namespace Dcpu16.VM
       {
         uint c = (uint)(a << 16);
         a = (ushort)((a / b.Value) >> 16);
-        machine.o = (ushort)((c / b.Value) & MAX_VAL);
+        machine.o = (ushort)((c / b.Value) & ushort.MaxValue);
       }
       return 0;
     }
@@ -219,14 +216,14 @@ namespace Dcpu16.VM
     {
       uint c = (uint)(a << 16);
       a = (ushort)((c / b.Value) >> 16);
-      machine.o = (ushort)((c / b.Value) & MAX_VAL);
+      machine.o = (ushort)((c / b.Value) & ushort.MaxValue);
       return 0;
     }
 
     ushort shl(ref ushort a, Lazy<ushort> b)
     {
       uint c = (uint)(a << b.Value);
-      a = (ushort)(c & MAX_VAL);
+      a = (ushort)(c & ushort.MaxValue);
       machine.o = (ushort) (c >> 16);
       return 0;
     }
@@ -235,7 +232,7 @@ namespace Dcpu16.VM
     {
       uint c = (uint)((a << 16) >> b.Value);
       a = (ushort)(c >> 16);
-      machine.o = (ushort)(c & MAX_VAL);
+      machine.o = (ushort)(c & ushort.MaxValue);
       return 0;
     }
 
