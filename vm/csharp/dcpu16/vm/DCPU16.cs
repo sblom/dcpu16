@@ -77,13 +77,11 @@ namespace Dcpu16.VM
       route(a, op, () => route(b, get));
     }
 
-    ushort get(ref ushort a, Func<ushort> b)
-    {
-      return a;
-    }
-
     ushort route(byte aaaaaa, operation op, Func<ushort> bget = null)
     {
+      if (machine.skip)
+        op = noop;
+
       if ((aaaaaa & 0x20) != 0) {
         ushort literal = (ushort)(aaaaaa & 0x1f);
         return op(ref literal, bget);
@@ -131,6 +129,19 @@ namespace Dcpu16.VM
 
     void extended(byte a, byte o) { }
 
+    #region Special ops that aren't actually in the CPU instruction set.
+    ushort get(ref ushort a, Func<ushort> bget)
+    {
+      return a;
+    }
+    ushort noop(ref ushort a, Func<ushort> bget)
+    {
+      bget();
+      return 0;
+    }
+    #endregion
+
+    #region Machine operation implementations.
     ushort set(ref ushort loca, Func<ushort> bget)
     {
       ushort b = bget();
@@ -192,6 +203,7 @@ namespace Dcpu16.VM
     ushort ifn(ref ushort loca, Func<ushort> bget) { return 0; }
     ushort ifg(ref ushort loca, Func<ushort> bget) { return 0; }
     ushort ifb(ref ushort loca, Func<ushort> bget) { return 0; }
+    #endregion
 
     public static void Main(String[] args) {
       ushort[] sample = {0x7c01, 0x0030, 0x7de1, 0x1000, 0x0020, 0x7803, 0x1000, 0xc00d,
