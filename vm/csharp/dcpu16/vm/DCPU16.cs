@@ -16,10 +16,11 @@ namespace Dcpu16.VM
   public class Processor
   {
     private Machine machine;
+    public static ushort WORD_SIZE = 16;
+    public static ushort MAX_VAL = (ushort)((1 << WORD_SIZE) - 1);
+    public static ushort MIN_VAL = 0;
 
-    public Processor()
-      : this(new Machine())
-    {}
+    public Processor() : this(new Machine()) {}
 
     public Processor(Machine machine)
     {
@@ -138,20 +139,55 @@ namespace Dcpu16.VM
         }
       }
 
-      byte type = (byte)((aaaaaa >> 3) & 0x3);
-      byte loc = (byte)(aaaaaa & 0x7);
-      if (type == 0)
-      {
-        switch(loc){}
-      }
-    }   
+//      byte type = (byte)((aaaaaa >> 3) & 0x3);
+//      byte loc = (byte)(aaaaaa & 0x7);
+//      if (type == 0)
+//      {
+//        switch(loc){}
+//      }
+    }
 
     void extended(byte a, byte o) { }
-    void set(ref ushort loca, ref ushort locb) {}
-    void add(ref ushort loca, ref ushort locb) { }
-    void sub(ref ushort loca, ref ushort locb) { }
-    void mul(ref ushort loca, ref ushort locb) { }
-    void div(ref ushort loca, ref ushort locb) { }
+
+    void set(ref ushort loca, ref ushort locb)
+    {
+      loca = locb;
+    }
+
+    void add(ref ushort loca, ref ushort locb)
+    {
+      uint a = (uint)(loca + locb);
+      loca = (ushort)(a & MAX_VAL);
+      machine.o = (ushort)(a >> 16);
+    }
+
+    void sub(ref ushort loca, ref ushort locb)
+    {
+      int a = loca - locb;
+      loca = (ushort)(a & MAX_VAL);
+      machine.o = (ushort)(a >> 16);
+    }
+
+    void mul(ref ushort loca, ref ushort locb)
+    {
+      uint a = (uint)(loca * locb);
+      loca = (ushort)(a & MAX_VAL);
+      machine.o = (ushort)(a >> 16);
+    }
+
+    void div(ref ushort loca, ref ushort locb)
+    {
+      if (locb == 0) {
+        loca = 0;
+        machine.o = 0;
+        return;
+      }
+      uint a = (uint)(loca << 16);
+      loca = (ushort)((a/locb) >> 16);
+      machine.o = (ushort)((a/locb) & MAX_VAL);
+    }
+
+
     void mod(ref ushort loca, ref ushort locb) { }
     void shl(ref ushort loca, ref ushort locb) { }
     void shr(ref ushort loca, ref ushort locb) { }
@@ -162,5 +198,72 @@ namespace Dcpu16.VM
     void ifn(ref ushort loca, ref ushort locb) { }
     void ifg(ref ushort loca, ref ushort locb) { }
     void ifb(ref ushort loca, ref ushort locb) { }
+
+    public static void Main(String[] args) {
+      ushort a = 0xffff;
+      ushort b = 1;
+
+      ushort copyA = a;
+      Processor p = new Processor();
+      p.add (ref a, ref b);
+      Console.WriteLine(copyA + " + " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 5;
+      b = 10;
+      copyA = a;
+      p.add (ref a, ref b);
+      Console.WriteLine(copyA + " + " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 10;
+      b = 5;
+      copyA = a;
+      p.sub (ref a, ref b);
+      Console.WriteLine(copyA + " - " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 5;
+      b = 10;
+      copyA = a;
+      p.sub (ref a, ref b);
+      Console.WriteLine(copyA + " - " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xffff;
+      b = 0x5;
+      copyA = a;
+      p.mul (ref a, ref b);
+      Console.WriteLine(copyA + " * " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xffff;
+      b = 0xffff;
+      copyA = a;
+      p.mul (ref a, ref b);
+      Console.WriteLine(copyA + " * " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf000;
+      b = 2;
+      copyA = a;
+      p.div (ref a, ref b);
+      Console.WriteLine(copyA + " / " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf001;
+      b = 2;
+      copyA = a;
+      p.div (ref a, ref b);
+      Console.WriteLine(copyA + " / " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf001;
+      b = 14;
+      copyA = a;
+      p.div (ref a, ref b);
+      Console.WriteLine(copyA + " / " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+    }
   }
 }
