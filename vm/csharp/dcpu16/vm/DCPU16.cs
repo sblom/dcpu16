@@ -72,7 +72,7 @@ namespace Dcpu16.VM
       }
     }
 
-    delegate ushort operation(ref ushort a, Func<ushort> b = null);
+    delegate ushort operation(ref ushort a, Func<ushort> bget = null);
     void dispatch(byte a, byte b, operation op)
     {
       route(a, op, () => route(b, get));
@@ -143,63 +143,63 @@ namespace Dcpu16.VM
     #endregion
 
     #region Machine operation implementations.
-    ushort set(ref ushort loca, Func<ushort> bget)
+    ushort set(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget();
-      loca = b;
+      a = b;
       return 0;
     }
 
-    ushort add(ref ushort loca, Func<ushort> bget)
+    ushort add(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget(); 
-      uint a = (uint)(loca + b);
-      loca = (ushort)(a & MAX_VAL);
-      machine.o = (ushort)(a >> 16);
+      uint c = (uint)(a + b);
+      a = (ushort)(c & MAX_VAL);
+      machine.o = (ushort)(c >> 16);
       return 0;
     }
 
-    ushort sub(ref ushort loca, Func<ushort> bget)
+    ushort sub(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget();
-      int a = loca - b;
-      loca = (ushort)(a & MAX_VAL);
-      machine.o = (ushort)(a >> 16);
+      int c = a - b;
+      a = (ushort)(c & MAX_VAL);
+      machine.o = (ushort)(c >> 16);
       return 0;
     }
 
-    ushort mul(ref ushort loca, Func<ushort> bget)
+    ushort mul(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget();
-      uint a = (uint)(loca * b);
-      loca = (ushort)(a & MAX_VAL);
-      machine.o = (ushort)(a >> 16);
+      uint c = (uint)(a * b);
+      a = (ushort)(c & MAX_VAL);
+      machine.o = (ushort)(c >> 16);
       return 0;
     }
 
-    ushort div(ref ushort loca, Func<ushort> bget)
+    ushort div(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget();
       if (b == 0)
       {
-        loca = 0;
+        a = 0;
         machine.o = 0;
       }
       else
       {
-        uint a = (uint)(loca << 16);
-        loca = (ushort)((a / b) >> 16);
-        machine.o = (ushort)((a / b) & MAX_VAL);
+        uint c = (uint)(a << 16);
+        a = (ushort)((a / b) >> 16);
+        machine.o = (ushort)((c / b) & MAX_VAL);
       }
       return 0;
     }
 
-    ushort mod(ref ushort loca, Func<ushort> bget) { return 0; }
-    ushort shl(ref ushort loca, Func<ushort> bget) { return 0; }
-    ushort shr(ref ushort loca, Func<ushort> bget) { return 0; }
-    ushort and(ref ushort loca, Func<ushort> bget) { return 0; }
-    ushort or(ref ushort loca, Func<ushort> bget) { return 0; }
-    ushort xor(ref ushort loca, Func<ushort> bget) { return 0; }
+    ushort mod(ref ushort a, Func<ushort> bget) { return 0; }
+    ushort shl(ref ushort a, Func<ushort> bget) { return 0; }
+    ushort shr(ref ushort a, Func<ushort> bget) { return 0; }
+    ushort and(ref ushort a, Func<ushort> bget) { return 0; }
+    ushort or(ref ushort a, Func<ushort> bget) { return 0; }
+    ushort xor(ref ushort a, Func<ushort> bget) { return 0; }
     ushort ife(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget();
