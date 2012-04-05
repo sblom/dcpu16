@@ -81,7 +81,10 @@ namespace Dcpu16.VM
     ushort route(byte aaaaaa, operation op, Func<ushort> bget = null)
     {
       if (machine.skip)
+      {
         op = noop;
+        machine.skip = false;
+      }
 
       if ((aaaaaa & 0x20) != 0) {
         ushort literal = (ushort)(aaaaaa & 0x1f);
@@ -194,30 +197,75 @@ namespace Dcpu16.VM
       return 0;
     }
 
-    ushort mod(ref ushort a, Func<ushort> bget) { return 0; }
-    ushort shl(ref ushort a, Func<ushort> bget) { return 0; }
-    ushort shr(ref ushort a, Func<ushort> bget) { return 0; }
-    ushort and(ref ushort a, Func<ushort> bget) { return 0; }
-    ushort or(ref ushort a, Func<ushort> bget) { return 0; }
-    ushort xor(ref ushort a, Func<ushort> bget) { return 0; }
+    ushort mod(ref ushort a, Func<ushort> bget)
+    {
+      uint b = bget();
+      uint c = (uint)(a << 16);
+      a = (ushort)((c/b) >> 16);
+      machine.o = (ushort)((c/b) & MAX_VAL);
+      return 0;
+    }
+
+    ushort shl(ref ushort a, Func<ushort> bget)
+    {
+      ushort b = bget();
+      uint c = (uint) (a << b);
+      a = (ushort)(c & MAX_VAL);
+      machine.o = (ushort) (c >> 16);
+      return 0;
+    }
+
+    ushort shr(ref ushort a, Func<ushort> bget)
+    {
+      ushort b = bget();
+      uint c = (uint)((a << 16) >> b);
+      a = (ushort)(c >> 16);
+      machine.o = (ushort)(c & MAX_VAL);
+      return 0;
+    }
+
+    ushort and(ref ushort a, Func<ushort> bget)
+    {
+      ushort b = bget();
+      a = (ushort)(a&b);
+      return 0;
+    }
+
+    ushort or(ref ushort a, Func<ushort> bget)
+    {
+      ushort b = bget();
+      a = (ushort)(a|b);
+      return 0;
+    }
+
+    ushort xor(ref ushort a, Func<ushort> bget)
+    {
+      ushort b = bget();
+      a = (ushort)(a ^ b);
+      return 0;
+    }
+
     ushort ife(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget();
       machine.skip = !(a == b);
       return 0;
     }
+
     ushort ifn(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget();
       machine.skip = !(a != b);
       return 0;
     }
+
     ushort ifg(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget();
       machine.skip = !(a > b);
       return 0;
     }
+
     ushort ifb(ref ushort a, Func<ushort> bget)
     {
       ushort b = bget();
@@ -309,6 +357,56 @@ namespace Dcpu16.VM
       copyA = a;
       p.div (ref a, ()=>b);
       Console.WriteLine(copyA + " / " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0x8000;
+      b = 2;
+      copyA = a;
+      p.mod (ref a, ()=>b);
+      Console.WriteLine(copyA + " % " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0x8001;
+      b = 2;
+      copyA = a;
+      p.mod (ref a, ()=>b);
+      Console.WriteLine(copyA + " % " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+
+      a = 0xf001;
+      b = 2;
+      copyA = a;
+      p.shl (ref a, ()=>b);
+      Console.WriteLine(copyA + " << " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf007;
+      b = 2;
+      copyA = a;
+      p.shr (ref a, ()=>b);
+      Console.WriteLine(copyA + " >> " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf007;
+      b = 0x0f08;
+      copyA = a;
+      p.and (ref a, ()=>b);
+      Console.WriteLine(copyA + " & " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf007;
+      b = 0x0f09;
+      copyA = a;
+      p.or (ref a, ()=>b);
+      Console.WriteLine(copyA + " | " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf007;
+      b = 0x0f09;
+      copyA = a;
+      p.xor (ref a, ()=>b);
+      Console.WriteLine(copyA + " xor " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
     }
   }
