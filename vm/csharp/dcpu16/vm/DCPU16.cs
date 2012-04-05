@@ -139,13 +139,13 @@ namespace Dcpu16.VM
         }
       }
 
-      byte type = (byte)((aaaaaa >> 3) & 0x3);
-      byte loc = (byte)(aaaaaa & 0x7);
-      if (type == 0)
-      {
-        //switch(loc){}
-      }
-    }   
+//      byte type = (byte)((aaaaaa >> 3) & 0x3);
+//      byte loc = (byte)(aaaaaa & 0x7);
+//      if (type == 0)
+//      {
+//        switch(loc){}
+//      }
+    }
 
     void extended(byte a, byte o) { }
 
@@ -168,12 +168,24 @@ namespace Dcpu16.VM
       machine.o = (ushort)(a >> 16);
     }
 
-    void mul(ref ushort loca, ref ushort locb) {
+    void mul(ref ushort loca, ref ushort locb)
+    {
       uint a = (uint)(loca * locb);
       loca = (ushort)(a & MAX_VAL);
       machine.o = (ushort)(a >> 16);
     }
-    void div(ref ushort loca, ref ushort locb) { }
+
+    void div(ref ushort loca, ref ushort locb)
+    {
+      if (locb == 0) {
+        loca = 0;
+        machine.o = 0;
+        return;
+      }
+      uint a = (uint)(loca << 16);
+      loca = (ushort)((a/locb) >> 16);
+      machine.o = (ushort)((a/locb) & MAX_VAL);
+    }
     void mod(ref ushort loca, ref ushort locb) { }
     void shl(ref ushort loca, ref ushort locb) { }
     void shr(ref ushort loca, ref ushort locb) { }
@@ -228,6 +240,27 @@ namespace Dcpu16.VM
       copyA = a;
       p.mul (ref a, ref b);
       Console.WriteLine(copyA + " * " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf000;
+      b = 2;
+      copyA = a;
+      p.div (ref a, ref b);
+      Console.WriteLine(copyA + " / " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf001;
+      b = 2;
+      copyA = a;
+      p.div (ref a, ref b);
+      Console.WriteLine(copyA + " / " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0xf001;
+      b = 14;
+      copyA = a;
+      p.div (ref a, ref b);
+      Console.WriteLine(copyA + " / " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
     }
   }
