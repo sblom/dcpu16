@@ -11,6 +11,7 @@ namespace Dcpu16.VM
     public ushort[] regs = new ushort[8];
     public ushort[] ram = new ushort[0x10000];
     public ushort pc, sp, o;
+    public bool skip=false;
   }
 
   public class Processor
@@ -187,9 +188,20 @@ namespace Dcpu16.VM
       machine.o = (ushort)((a/locb) & MAX_VAL);
     }
 
+    void mod(ref ushort loca, ref ushort locb)
+    {
+      if (locb == 0) {
+        loca = 0;
+        return;
+      }
+      loca %= locb;
+    }
 
-    void mod(ref ushort loca, ref ushort locb) { }
-    void shl(ref ushort loca, ref ushort locb) { }
+    void shl(ref ushort loca, ref ushort locb)
+    {
+      loca = loca << locb;
+      machine.o = loca >> 16;
+    }
     void shr(ref ushort loca, ref ushort locb) { }
     void and(ref ushort loca, ref ushort locb) { }
     void or(ref ushort loca, ref ushort locb) { }
@@ -263,6 +275,20 @@ namespace Dcpu16.VM
       copyA = a;
       p.div (ref a, ref b);
       Console.WriteLine(copyA + " / " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0x8000;
+      b = 2;
+      copyA = a;
+      p.mod (ref a, ref b);
+      Console.WriteLine(copyA + " % " + b + " = " + a);
+      Console.WriteLine ("overflow: " + p.machine.o);
+
+      a = 0x8001;
+      b = 2;
+      copyA = a;
+      p.mod (ref a, ref b);
+      Console.WriteLine(copyA + " % " + b + " = " + a);
       Console.WriteLine ("overflow: " + p.machine.o);
     }
   }
