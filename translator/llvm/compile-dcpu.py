@@ -214,6 +214,27 @@ class JSROpcode(Opcode):
     out.write_line('call void @%s(%%struct.VMState* %%state)' % arguments[0].label())
     out.reset_regs()
 
+class IFEOpcode(Opcode):
+  def __init__(self):
+    super(IFEOpcode, self).__init__('IFE')
+
+  def __repr__(self):
+    return 'IFEOpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg1 = arguments[0].to_llvm(out)
+    arg2 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    out.write_line('%s = icmp eq i16 %s, %s' % (tmp1, arg1, arg2))
+    label1 = out.label()
+    label2 = out.label()
+    out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp1, label1, label2))
+    out.write_line('%s:' % label1)
+    def post_condition():
+      out.write_line('br label %%%s' % label2)
+      out.write_line('%s:' % label2)
+    return post_condition
+
 class IFNOpcode(Opcode):
   def __init__(self):
     super(IFNOpcode, self).__init__('IFN')
@@ -229,6 +250,50 @@ class IFNOpcode(Opcode):
     label1 = out.label()
     label2 = out.label()
     out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp1, label1, label2))
+    out.write_line('%s:' % label1)
+    def post_condition():
+      out.write_line('br label %%%s' % label2)
+      out.write_line('%s:' % label2)
+    return post_condition
+
+class IFGOpcode(Opcode):
+  def __init__(self):
+    super(IFGOpcode, self).__init__('IFG')
+
+  def __repr__(self):
+    return 'IFGOpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg1 = arguments[0].to_llvm(out)
+    arg2 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    out.write_line('%s = icmp ugt i16 %s, %s' % (tmp1, arg1, arg2))
+    label1 = out.label()
+    label2 = out.label()
+    out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp1, label1, label2))
+    out.write_line('%s:' % label1)
+    def post_condition():
+      out.write_line('br label %%%s' % label2)
+      out.write_line('%s:' % label2)
+    return post_condition
+
+class IFBOpcode(Opcode):
+  def __init__(self):
+    super(IFBOpcode, self).__init__('IFB')
+
+  def __repr__(self):
+    return 'IFBOpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg1 = arguments[0].to_llvm(out)
+    arg2 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    tmp2 = out.temp_variable()
+    out.write_line('%s = and i16 %s, %s' % (tmp1, arg1, arg2))
+    out.write_line('%s = icmp ne i16 %s, 0' % (tmp2, tmp1))
+    label1 = out.label()
+    label2 = out.label()
+    out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp2, label1, label2))
     out.write_line('%s:' % label1)
     def post_condition():
       out.write_line('br label %%%s' % label2)
@@ -434,6 +499,7 @@ class Dereference(object):
     tmp2 = out.temp_variable()
     out.write_line('%s = getelementptr i16* %%memory, i16 %s' % (tmp1, arg0))
     out.write_line('%s = load i16* %s' % (tmp2, tmp1))
+    out.write_line('call void @memory_referenced(%%struct.VMState* %%state, i16 %s)' % arg0)
     return tmp2
 
   def to_llvm_store(self, out, value):
@@ -441,6 +507,7 @@ class Dereference(object):
     tmp = out.temp_variable()
     out.write_line('%s = getelementptr i16* %%memory, i16 %s' % (tmp, arg0))
     out.write_line('store i16 %s, i16* %s' % (value, tmp))
+    out.write_line('call void @memory_referenced(%%struct.VMState* %%state, i16 %s)' % arg0)
 
   def dump_reg(self, out):
     pass
@@ -640,9 +707,10 @@ class Program(object):
     out.write_line('}')
 
   def to_llvm(self, out):
-    out.write_line('%struct.VMState = type { [11 x i16], [65536 x i16] }')
-    out.write_line('declare void @output(i16)')
+    out.write_line('%struct.VMState = type { [11 x i16], [65536 x i16], [1024 x i8] }')
+    out.write_line('declare void @output(i16) nounwind')
     out.write_line('declare void @debug(%struct.VMState* nocapture) nounwind')
+    out.write_line('declare void @memory_referenced(%struct.VMState* nocapture, i16) nounwind')
     self._to_llvm_function('runMachine', 0, out)
     for label in self._function_starts:
       self._to_llvm_function(label, self._label_map[label], out)
@@ -742,7 +810,10 @@ opcodes = {
   'MUL': MULOpcode(),
   'DIV': DIVOpcode(),
   'MOD': MODOpcode(),
+  'IFE': IFEOpcode(),
   'IFN': IFNOpcode(),
+  'IFG': IFGOpcode(),
+  'IFB': IFBOpcode(),
   'JSR': JSROpcode(),
   'SHL': SHLOpcode(),
   'SHR': SHROpcode(),
