@@ -1,0 +1,3 @@
+[submodule "compiler/llvm"]
+	path = compiler/llvm
+	url = git@github.com:sblom/dcpu16-llvm
