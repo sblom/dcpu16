@@ -125,15 +125,49 @@ class DIVOpcode(Opcode):
     tmp5 = out.temp_variable()
     tmp6 = out.temp_variable()
     tmp7 = out.temp_variable()
+    tmp8 = out.temp_variable()
     out.write_line('%s:' % label2)
-    out.write_line('%s = udiv i16 %s, %s' % (tmp2, arg0, arg1))
-    out.write_line('%s = zext i16 %s to i32' % (tmp3, arg0))
-    out.write_line('%s = zext i16 %s to i32' % (tmp4, arg1))
-    out.write_line('%s = shl i32 %s, 16' % (tmp5, tmp3))
-    out.write_line('%s = udiv i32 %s, %s' % (tmp6, tmp5, arg1))
+    out.write_line('%s = zext i16 %s to i32' % (tmp2, arg0))
+    out.write_line('%s = zext i16 %s to i32' % (tmp3, arg1))
+    out.write_line('%s = shl i32 %s, 16' % (tmp4, tmp2))
+    out.write_line('%s = udiv i32 %s, %s' % (tmp5, tmp4, tmp3))
+    out.write_line('%s = lshr i32 %s, 16' % (tmp6, tmp5))
     out.write_line('%s = trunc i32 %s to i16' % (tmp7, tmp6))
+    out.write_line('%s = trunc i32 %s to i16' % (tmp8, tmp5))
+    out.write_line('store i16 %s, i16* %s' % (tmp7, arguments[0].to_llvm_store(out)))
+    out.write_line('store i16 %s, i16* %%O' % tmp8)
+    out.write_line('br label %%%s' % label3)
+
+    # done
+    out.write_line('%s:' % label3)
+
+class MODOpcode(Opcode):
+  def __init__(self):
+    super(MODOpcode, self).__init__('MOD')
+
+  def __repr__(self):
+    return 'MODOpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg0 = arguments[0].to_llvm(out)
+    arg1 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    label1 = out.label()
+    label2 = out.label()
+    label3 = out.label()
+    out.write_line('%s = icmp eq i16 %s, 0' % (tmp1, arg1))
+    out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp1, label1, label2))
+
+    # div by 0
+    out.write_line('%s:' % label1)
+    out.write_line('store i16 0, i16* %s' % arguments[0].to_llvm_store(out))
+    out.write_line('br label %%%s' % label3)
+
+    # regular divide
+    tmp2 = out.temp_variable()
+    out.write_line('%s:' % label2)
+    out.write_line('%s = urem i16 %s, %s' % (tmp2, arg0, arg1))
     out.write_line('store i16 %s, i16* %s' % (tmp2, arguments[0].to_llvm_store(out)))
-    out.write_line('store i16 %s, i16* %%O' % tmp7)
     out.write_line('br label %%%s' % label3)
 
     # done
@@ -223,6 +257,77 @@ class SHLOpcode(Opcode):
     out.write_line('%s = lshr i32 %s, 16' % (tmp5, tmp3))
     out.write_line('%s = trunc i32 %s to i16' % (tmp6, tmp5))
     out.write_line('store i16 %s, i16* %%O' % tmp6)
+
+class SHROpcode(Opcode):
+  def __init__(self):
+    super(SHROpcode, self).__init__('SHR')
+
+  def __repr__(self):
+    return 'SHROpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg0 = arguments[0].to_llvm(out)
+    arg1 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    tmp2 = out.temp_variable()
+    tmp3 = out.temp_variable()
+    tmp4 = out.temp_variable()
+    tmp5 = out.temp_variable()
+    tmp6 = out.temp_variable()
+    out.write_line('%s = zext i16 %s to i32' % (tmp1, arg0))
+    out.write_line('%s = zext i16 %s to i32' % (tmp2, arg1))
+    out.write_line('%s = shl i32 %s, 16' % (tmp3, tmp1))
+    out.write_line('%s = lshr i32 %s, %s' % (tmp4, tmp3, tmp2))
+    out.write_line('%s = lshr i32 %s, 16' % (tmp5, tmp4))
+    out.write_line('%s = trunc i32 %s to i16' % (tmp6, tmp5))
+    out.write_line('store i16 %s, i16* %s' % (tmp6, arguments[0].to_llvm_store(out)))
+
+    # overflow
+    tmp7 = out.temp_variable()
+    out.write_line('%s = trunc i32 %s to i16' % (tmp7, tmp4))
+    out.write_line('store i16 %s, i16* %%O' % tmp7)
+
+class ANDOpcode(Opcode):
+  def __init__(self):
+    super(ANDOpcode, self).__init__('AND')
+
+  def __repr__(self):
+    return 'ANDOpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg0 = arguments[0].to_llvm(out)
+    arg1 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    out.write_line('%s = and i16 %s, %s' % (tmp1, arg0, arg1))
+    out.write_line('store i16 %s, i16* %s' % (tmp1, arguments[0].to_llvm_store(out)))
+
+class OROpcode(Opcode):
+  def __init__(self):
+    super(OROpcode, self).__init__('OR')
+
+  def __repr__(self):
+    return 'OROpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg0 = arguments[0].to_llvm(out)
+    arg1 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    out.write_line('%s = or i16 %s, %s' % (tmp1, arg0, arg1))
+    out.write_line('store i16 %s, i16* %s' % (tmp1, arguments[0].to_llvm_store(out)))
+
+class XOROpcode(Opcode):
+  def __init__(self):
+    super(XOROpcode, self).__init__('XOR')
+
+  def __repr__(self):
+    return 'XOROpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg0 = arguments[0].to_llvm(out)
+    arg1 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    out.write_line('%s = xor i16 %s, %s' % (tmp1, arg0, arg1))
+    out.write_line('store i16 %s, i16* %s' % (tmp1, arguments[0].to_llvm_store(out)))
 
 class Register(object):
   def __init__(self, register, offset):
@@ -363,6 +468,8 @@ class Instruction(object):
     self._pc = pc
 
   def length(self):
+    if self.is_vm_instruction():
+      return 0
     return 1 + sum([x.extra_length() for x in self._arguments])
 
   def jump_label(self):
@@ -377,13 +484,17 @@ class Instruction(object):
     return isinstance(self._opcode, SETOpcode) and isinstance(self._arguments[0], Register) and \
       self._arguments[0].register() == 'PC'
 
+  def is_vm_instruction(self):
+    return isinstance(self._opcode, DBGOpcode) or isinstance(self._opcode, OUTOpcode)
+
   def to_llvm(self, out):
     out.write_line('')
     out.write_line('; %s' % self.to_das())
     if self._label is not None:
       out.write_line('br label %%%s' % self._label)
       out.write_line('%s:' % self._label)
-    out.write_line('store i16 %d, i16* %%PC' % self._pc)
+    if not self.is_vm_instruction():
+      out.write_line('store i16 %d, i16* %%PC' % self._pc)
     if self.jump_label() is not None:
       out.write_line('br label %%%s' % self.jump_label())
       return True, self.jump_label(), None
@@ -575,9 +686,14 @@ opcodes = {
   'ADD': ADDOpcode(),
   'MUL': MULOpcode(),
   'DIV': DIVOpcode(),
+  'MOD': MODOpcode(),
   'IFN': IFNOpcode(),
   'JSR': JSROpcode(),
   'SHL': SHLOpcode(),
+  'SHR': SHROpcode(),
+  'AND': ANDOpcode(),
+  'OR': OROpcode(),
+  'XOR': XOROpcode(),
 }
 
 registers = {

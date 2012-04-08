@@ -1,0 +1,3 @@
+SET A, 0xC
+XOR A, 0xA
+OUT A

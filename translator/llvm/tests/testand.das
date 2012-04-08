@@ -1,0 +1,3 @@
+SET A, 0xC
+AND A, 0xA
+OUT A
