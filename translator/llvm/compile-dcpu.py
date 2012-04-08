@@ -41,6 +41,104 @@ class DBGOpcode(Opcode):
   def to_llvm(self, out, arguments):
     out.write_line('call void @debug(%struct.VMState* %state)')
 
+class ADDOpcode(Opcode):
+  def __init__(self):
+    super(ADDOpcode, self).__init__('ADD')
+
+  def __repr__(self):
+    return 'ADDOpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg0 = arguments[0].to_llvm(out)
+    arg1 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    tmp2 = out.temp_variable()
+    tmp3 = out.temp_variable()
+    tmp4 = out.temp_variable()
+    out.write_line('%s = zext i16 %s to i32' % (tmp1, arg0))
+    out.write_line('%s = zext i16 %s to i32' % (tmp2, arg1))
+    out.write_line('%s = add i32 %s, %s' % (tmp3, tmp1, tmp2))
+    out.write_line('%s = trunc i32 %s to i16' % (tmp4, tmp3))
+    out.write_line('store i16 %s, i16* %s' % (tmp4, arguments[0].to_llvm_store(out)))
+
+    # overflow
+    tmp5 = out.temp_variable()
+    tmp6 = out.temp_variable()
+    out.write_line('%s = lshr i32 %s, 16' % (tmp5, tmp3))
+    out.write_line('%s = trunc i32 %s to i16' % (tmp6, tmp5))
+    out.write_line('store i16 %s, i16* %%O' % tmp6)
+
+class MULOpcode(Opcode):
+  def __init__(self):
+    super(MULOpcode, self).__init__('MUL')
+
+  def __repr__(self):
+    return 'MULOpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg0 = arguments[0].to_llvm(out)
+    arg1 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    tmp2 = out.temp_variable()
+    tmp3 = out.temp_variable()
+    tmp4 = out.temp_variable()
+    out.write_line('%s = zext i16 %s to i32' % (tmp1, arg0))
+    out.write_line('%s = zext i16 %s to i32' % (tmp2, arg1))
+    out.write_line('%s = mul i32 %s, %s' % (tmp3, tmp1, tmp2))
+    out.write_line('%s = trunc i32 %s to i16' % (tmp4, tmp3))
+    out.write_line('store i16 %s, i16* %s' % (tmp4, arguments[0].to_llvm_store(out)))
+
+    # overflow
+    tmp5 = out.temp_variable()
+    tmp6 = out.temp_variable()
+    out.write_line('%s = lshr i32 %s, 16' % (tmp5, tmp3))
+    out.write_line('%s = trunc i32 %s to i16' % (tmp6, tmp5))
+    out.write_line('store i16 %s, i16* %%O' % tmp6)
+
+class DIVOpcode(Opcode):
+  def __init__(self):
+    super(DIVOpcode, self).__init__('DIV')
+
+  def __repr__(self):
+    return 'DIVOpcode()'
+
+  def to_llvm(self, out, arguments):
+    arg0 = arguments[0].to_llvm(out)
+    arg1 = arguments[1].to_llvm(out)
+    tmp1 = out.temp_variable()
+    label1 = out.label()
+    label2 = out.label()
+    label3 = out.label()
+    out.write_line('%s = icmp eq i16 %s, 0' % (tmp1, arg1))
+    out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp1, label1, label2))
+
+    # div by 0
+    out.write_line('%s:' % label1)
+    out.write_line('store i16 0, i16* %s' % arguments[0].to_llvm_store(out))
+    out.write_line('store i16 0, i16* %O')
+    out.write_line('br label %%%s' % label3)
+
+    # regular divide
+    tmp2 = out.temp_variable()
+    tmp3 = out.temp_variable()
+    tmp4 = out.temp_variable()
+    tmp5 = out.temp_variable()
+    tmp6 = out.temp_variable()
+    tmp7 = out.temp_variable()
+    out.write_line('%s:' % label2)
+    out.write_line('%s = udiv i16 %s, %s' % (tmp2, arg0, arg1))
+    out.write_line('%s = zext i16 %s to i32' % (tmp3, arg0))
+    out.write_line('%s = zext i16 %s to i32' % (tmp4, arg1))
+    out.write_line('%s = shl i32 %s, 16' % (tmp5, tmp3))
+    out.write_line('%s = udiv i32 %s, %s' % (tmp6, tmp5, arg1))
+    out.write_line('%s = trunc i32 %s to i16' % (tmp7, tmp6))
+    out.write_line('store i16 %s, i16* %s' % (tmp2, arguments[0].to_llvm_store(out)))
+    out.write_line('store i16 %s, i16* %%O' % tmp7)
+    out.write_line('br label %%%s' % label3)
+
+    # done
+    out.write_line('%s:' % label3)
+
 class SUBOpcode(Opcode):
   def __init__(self):
     super(SUBOpcode, self).__init__('SUB')
@@ -474,6 +572,9 @@ opcodes = {
   'OUT': OUTOpcode(),
   'DBG': DBGOpcode(),
   'SUB': SUBOpcode(),
+  'ADD': ADDOpcode(),
+  'MUL': MULOpcode(),
+  'DIV': DIVOpcode(),
   'IFN': IFNOpcode(),
   'JSR': JSROpcode(),
   'SHL': SHLOpcode(),
@@ -505,7 +606,7 @@ COMMENT = Suppress(';' + CharsNotIn('\n')*(0,1))
 REGISTER_ARGUMENT = REGISTER
 REGISTER_ARGUMENT.setParseAction(lambda s,l,t: registers[t[0]])
 
-HEX_ARGUMENT = '0x' + Word(nums)
+HEX_ARGUMENT = '0x' + Word('0123456789ABCDEF')
 HEX_ARGUMENT.setParseAction(lambda s,l,t: Number(int(t[1], 16)))
 
 DEC_ARGUMENT = Word(nums)

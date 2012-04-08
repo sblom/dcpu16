@@ -1,4 +1,6 @@
-.PHONY = clean
+ALL_TESTS = tests/testsub tests/testset tests/testadd tests/testmul tests/testdiv
+
+.PHONY = clean tests
 
 %.ll: %.das compile-dcpu.py
 	python compile-dcpu.py < $< > $@
@@ -14,3 +16,5 @@
 
 clean:
 	rm -f *.bc *.ll *.s
+
+tests: $(ALL_TESTS)

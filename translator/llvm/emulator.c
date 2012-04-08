@@ -16,7 +16,7 @@ int main() {
   return 0;
 }
 
-void output(short num) {
+void output(unsigned short num) {
   printf("OUT: %d\n", num);
 }
 
