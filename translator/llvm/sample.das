@@ -1,4 +1,3 @@
-
         ; Try some basic stuff
                       SET A, 0x30              ; 7c01 0030
                       SET [0x1000], 0x20       ; 7de1 1000 0020

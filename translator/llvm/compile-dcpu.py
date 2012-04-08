@@ -19,7 +19,7 @@ class SETOpcode(Opcode):
     return 'SETOpcode()'
 
   def to_llvm(self, out, arguments):
-    out.write_line('store i16 %s, i16* %s' % (arguments[1].to_llvm(out), arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, arguments[1].to_llvm(out))
 
 class OUTOpcode(Opcode):
   def __init__(self):
@@ -39,6 +39,7 @@ class DBGOpcode(Opcode):
     return 'DBGOpcode()'
 
   def to_llvm(self, out, arguments):
+    out.dump_regs(True)
     out.write_line('call void @debug(%struct.VMState* %state)')
 
 class ADDOpcode(Opcode):
@@ -59,14 +60,14 @@ class ADDOpcode(Opcode):
     out.write_line('%s = zext i16 %s to i32' % (tmp2, arg1))
     out.write_line('%s = add i32 %s, %s' % (tmp3, tmp1, tmp2))
     out.write_line('%s = trunc i32 %s to i16' % (tmp4, tmp3))
-    out.write_line('store i16 %s, i16* %s' % (tmp4, arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, tmp4)
 
     # overflow
     tmp5 = out.temp_variable()
     tmp6 = out.temp_variable()
     out.write_line('%s = lshr i32 %s, 16' % (tmp5, tmp3))
     out.write_line('%s = trunc i32 %s to i16' % (tmp6, tmp5))
-    out.write_line('store i16 %s, i16* %%O' % tmp6)
+    out.set_reg('O', tmp6)
 
 class MULOpcode(Opcode):
   def __init__(self):
@@ -86,14 +87,14 @@ class MULOpcode(Opcode):
     out.write_line('%s = zext i16 %s to i32' % (tmp2, arg1))
     out.write_line('%s = mul i32 %s, %s' % (tmp3, tmp1, tmp2))
     out.write_line('%s = trunc i32 %s to i16' % (tmp4, tmp3))
-    out.write_line('store i16 %s, i16* %s' % (tmp4, arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, tmp4)
 
     # overflow
     tmp5 = out.temp_variable()
     tmp6 = out.temp_variable()
     out.write_line('%s = lshr i32 %s, 16' % (tmp5, tmp3))
     out.write_line('%s = trunc i32 %s to i16' % (tmp6, tmp5))
-    out.write_line('store i16 %s, i16* %%O' % tmp6)
+    out.set_reg('O', tmp6)
 
 class DIVOpcode(Opcode):
   def __init__(self):
@@ -109,14 +110,10 @@ class DIVOpcode(Opcode):
     label1 = out.label()
     label2 = out.label()
     label3 = out.label()
-    out.write_line('%s = icmp eq i16 %s, 0' % (tmp1, arg1))
-    out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp1, label1, label2))
-
-    # div by 0
+    out.write_line('br label %%%s' % label1)
     out.write_line('%s:' % label1)
-    out.write_line('store i16 0, i16* %s' % arguments[0].to_llvm_store(out))
-    out.write_line('store i16 0, i16* %O')
-    out.write_line('br label %%%s' % label3)
+    out.write_line('%s = icmp eq i16 %s, 0' % (tmp1, arg1))
+    out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp1, label3, label2))
 
     # regular divide
     tmp2 = out.temp_variable()
@@ -134,12 +131,16 @@ class DIVOpcode(Opcode):
     out.write_line('%s = lshr i32 %s, 16' % (tmp6, tmp5))
     out.write_line('%s = trunc i32 %s to i16' % (tmp7, tmp6))
     out.write_line('%s = trunc i32 %s to i16' % (tmp8, tmp5))
-    out.write_line('store i16 %s, i16* %s' % (tmp7, arguments[0].to_llvm_store(out)))
-    out.write_line('store i16 %s, i16* %%O' % tmp8)
     out.write_line('br label %%%s' % label3)
 
     # done
+    tmp9 = out.temp_variable()
+    tmp10 = out.temp_variable()
     out.write_line('%s:' % label3)
+    out.write_line('%s = phi i16 [0, %%%s], [%s, %%%s]' % (tmp9, label1, tmp7, label2))
+    out.write_line('%s = phi i16 [0, %%%s], [%s, %%%s]' % (tmp10, label1, tmp8, label2))
+    arguments[0].to_llvm_store(out, tmp9)
+    out.set_reg('O', tmp10)
 
 class MODOpcode(Opcode):
   def __init__(self):
@@ -155,23 +156,24 @@ class MODOpcode(Opcode):
     label1 = out.label()
     label2 = out.label()
     label3 = out.label()
-    out.write_line('%s = icmp eq i16 %s, 0' % (tmp1, arg1))
-    out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp1, label1, label2))
-
-    # div by 0
+    out.write_line('br label %%%s' % label1)
     out.write_line('%s:' % label1)
-    out.write_line('store i16 0, i16* %s' % arguments[0].to_llvm_store(out))
-    out.write_line('br label %%%s' % label3)
+    out.write_line('%s = icmp eq i16 %s, 0' % (tmp1, arg1))
+    out.write_line('br i1 %s, label %%%s, label %%%s' % (tmp1, label3, label2))
 
     # regular divide
     tmp2 = out.temp_variable()
     out.write_line('%s:' % label2)
     out.write_line('%s = urem i16 %s, %s' % (tmp2, arg0, arg1))
-    out.write_line('store i16 %s, i16* %s' % (tmp2, arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, tmp2)
     out.write_line('br label %%%s' % label3)
 
     # done
+    tmp3 = out.temp_variable()
     out.write_line('%s:' % label3)
+    out.write_line('%s = phi i16 [0, %%%s], [%s, %%%s]' % (tmp3, label1, tmp2, label2))
+    arguments[0].to_llvm_store(out, tmp3)
+    out.set_reg('O', 0)
 
 class SUBOpcode(Opcode):
   def __init__(self):
@@ -191,14 +193,14 @@ class SUBOpcode(Opcode):
     out.write_line('%s = zext i16 %s to i32' % (tmp2, arg1))
     out.write_line('%s = sub i32 %s, %s' % (tmp3, tmp1, tmp2))
     out.write_line('%s = trunc i32 %s to i16' % (tmp4, tmp3))
-    out.write_line('store i16 %s, i16* %s' % (tmp4, arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, tmp4)
 
     # underflow
     tmp5 = out.temp_variable()
     tmp6 = out.temp_variable()
     out.write_line('%s = lshr i32 %s, 16' % (tmp5, tmp3))
     out.write_line('%s = trunc i32 %s to i16' % (tmp6, tmp5))
-    out.write_line('store i16 %s, i16* %%O' % tmp6)
+    out.set_reg('O', tmp6)
 
 class JSROpcode(Opcode):
   def __init__(self):
@@ -208,7 +210,9 @@ class JSROpcode(Opcode):
     return 'JSROpcode()'
 
   def to_llvm(self, out, arguments):
+    out.dump_regs()
     out.write_line('call void @%s(%%struct.VMState* %%state)' % arguments[0].label())
+    out.reset_regs()
 
 class IFNOpcode(Opcode):
   def __init__(self):
@@ -249,14 +253,14 @@ class SHLOpcode(Opcode):
     out.write_line('%s = zext i16 %s to i32' % (tmp2, arg1))
     out.write_line('%s = shl i32 %s, %s' % (tmp3, tmp1, tmp2))
     out.write_line('%s = trunc i32 %s to i16' % (tmp4, tmp3))
-    out.write_line('store i16 %s, i16* %s' % (tmp4, arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, tmp4)
 
     # overflow
     tmp5 = out.temp_variable()
     tmp6 = out.temp_variable()
     out.write_line('%s = lshr i32 %s, 16' % (tmp5, tmp3))
     out.write_line('%s = trunc i32 %s to i16' % (tmp6, tmp5))
-    out.write_line('store i16 %s, i16* %%O' % tmp6)
+    out.set_reg('O', tmp6)
 
 class SHROpcode(Opcode):
   def __init__(self):
@@ -280,12 +284,12 @@ class SHROpcode(Opcode):
     out.write_line('%s = lshr i32 %s, %s' % (tmp4, tmp3, tmp2))
     out.write_line('%s = lshr i32 %s, 16' % (tmp5, tmp4))
     out.write_line('%s = trunc i32 %s to i16' % (tmp6, tmp5))
-    out.write_line('store i16 %s, i16* %s' % (tmp6, arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, tmp6)
 
     # overflow
     tmp7 = out.temp_variable()
     out.write_line('%s = trunc i32 %s to i16' % (tmp7, tmp4))
-    out.write_line('store i16 %s, i16* %%O' % tmp7)
+    out.set_reg('O', tmp7)
 
 class ANDOpcode(Opcode):
   def __init__(self):
@@ -299,7 +303,7 @@ class ANDOpcode(Opcode):
     arg1 = arguments[1].to_llvm(out)
     tmp1 = out.temp_variable()
     out.write_line('%s = and i16 %s, %s' % (tmp1, arg0, arg1))
-    out.write_line('store i16 %s, i16* %s' % (tmp1, arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, tmp1)
 
 class OROpcode(Opcode):
   def __init__(self):
@@ -313,7 +317,7 @@ class OROpcode(Opcode):
     arg1 = arguments[1].to_llvm(out)
     tmp1 = out.temp_variable()
     out.write_line('%s = or i16 %s, %s' % (tmp1, arg0, arg1))
-    out.write_line('store i16 %s, i16* %s' % (tmp1, arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, tmp1)
 
 class XOROpcode(Opcode):
   def __init__(self):
@@ -327,7 +331,7 @@ class XOROpcode(Opcode):
     arg1 = arguments[1].to_llvm(out)
     tmp1 = out.temp_variable()
     out.write_line('%s = xor i16 %s, %s' % (tmp1, arg0, arg1))
-    out.write_line('store i16 %s, i16* %s' % (tmp1, arguments[0].to_llvm_store(out)))
+    arguments[0].to_llvm_store(out, tmp1)
 
 class Register(object):
   def __init__(self, register, offset):
@@ -350,12 +354,13 @@ class Register(object):
     return self._register
 
   def to_llvm(self, out):
-    tmp = out.temp_variable()
-    out.write_line('%s = load i16* %%%s' % (tmp, self._register))
-    return tmp
+    return out.reg(self._register)
 
-  def to_llvm_store(self, out):
-    return '%%%s' % self._register
+  def to_llvm_store(self, out, value):
+    out.set_reg(self._register, value)
+
+  def dump_reg(self, out):
+    out.dump_reg(self._register)
 
 class Number(object):
   def __init__(self, num):
@@ -424,18 +429,21 @@ class Dereference(object):
     return '[' + self._argument.to_das() + ']'
 
   def to_llvm(self, out):
+    arg0 = self._argument.to_llvm(out)
     tmp1 = out.temp_variable()
     tmp2 = out.temp_variable()
-    out.write_line('%s = getelementptr i16* %%memory, i16 %s' % \
-                   (tmp1, self._argument.to_llvm(out)))
+    out.write_line('%s = getelementptr i16* %%memory, i16 %s' % (tmp1, arg0))
     out.write_line('%s = load i16* %s' % (tmp2, tmp1))
     return tmp2
 
-  def to_llvm_store(self, out):
+  def to_llvm_store(self, out, value):
+    arg0 = self._argument.to_llvm(out)
     tmp = out.temp_variable()
-    out.write_line('%s = getelementptr i16* %%memory, i16 %s' % \
-                   (tmp, self._argument.to_llvm(out)))
-    return tmp
+    out.write_line('%s = getelementptr i16* %%memory, i16 %s' % (tmp, arg0))
+    out.write_line('store i16 %s, i16* %s' % (value, tmp))
+
+  def dump_reg(self, out):
+    pass
 
 class Instruction(object):
   def __init__(self, label, opcode, arguments):
@@ -493,9 +501,9 @@ class Instruction(object):
     if self._label is not None:
       out.write_line('br label %%%s' % self._label)
       out.write_line('%s:' % self._label)
-    if not self.is_vm_instruction():
-      out.write_line('store i16 %d, i16* %%PC' % self._pc)
+    out.set_reg('PC', self._pc)
     if self.jump_label() is not None:
+      out.dump_regs()
       out.write_line('br label %%%s' % self.jump_label())
       return True, self.jump_label(), None
     elif self.is_return():
@@ -564,6 +572,9 @@ class Program(object):
     function_labels = {}
 
   def _to_llvm_block(self, index, out):
+    block_out = LLVM_Block_Out(out)
+    block_out.reset_regs()
+
     referenced_labels = set()
     post_conditions = []
     first = True
@@ -572,7 +583,7 @@ class Program(object):
         referenced_labels.add(instruction.label())
         break
 
-      stop, label, post_condition = instruction.to_llvm(out)
+      stop, label, post_condition = instruction.to_llvm(block_out)
       done = stop and len(post_conditions) == 0
 
       if post_condition is None:
@@ -589,6 +600,8 @@ class Program(object):
         break
 
       first = False
+
+    block_out.dump_regs()
 
     return referenced_labels
 
@@ -677,6 +690,47 @@ class LLVM_Function_Out(object):
     result = 'label%d' % self._label_counter
     self._label_counter += 1
     return result
+
+class LLVM_Block_Out(object):
+  def __init__(self, out):
+    self._out = out;
+    self.reset_regs()
+
+  def reset_regs(self):
+    self._reg_vars = dict([(x, (False, '%%%s' % x)) for x in registers.keys()])
+
+  def write_line(self, s):
+    self._out.write_line(s)
+
+  def indent(self):
+    self._out.indent()
+
+  def dedent(self):
+    self._out.dedent()
+
+  def temp_variable(self):
+    return self._out.temp_variable()
+
+  def label(self):
+    return self._out.label()
+
+  def reg(self, register):
+    is_temp_var, var = self._reg_vars[register]
+    if not is_temp_var:
+      tmp = self.temp_variable()
+      self.write_line('%s = load i16* %s' % (tmp, var))
+      var = tmp
+      self._reg_vars[register] = (True, var)
+    return var
+
+  def set_reg(self, register, value):
+    self._reg_vars[register] = (True, value)
+
+  def dump_regs(self, include_PC = False):
+    for register, (is_temp_var, var) in self._reg_vars.items():
+      if register != 'PC' or include_PC:
+        if is_temp_var:
+          self.write_line('store i16 %s, i16* %%%s' % (var, register))
 
 opcodes = {
   'SET': SETOpcode(),
