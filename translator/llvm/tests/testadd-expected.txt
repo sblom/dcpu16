@@ -1,0 +1,6 @@
+OUT: 30
+OUT: 0
+OUT: 65535
+OUT: 0
+OUT: 1
+OUT: 1

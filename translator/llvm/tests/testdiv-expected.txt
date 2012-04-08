@@ -1,0 +1,6 @@
+OUT: 2
+OUT: 0
+OUT: 2
+OUT: 26214
+OUT: 0
+OUT: 0
