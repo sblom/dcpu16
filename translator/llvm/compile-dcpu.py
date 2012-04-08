@@ -507,6 +507,7 @@ class Instruction(object):
       out.write_line('br label %%%s' % self.jump_label())
       return True, self.jump_label(), None
     elif self.is_return():
+      out.dump_regs()
       out.write_line('ret void')
       return True, None, None
     else:
